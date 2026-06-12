@@ -53,7 +53,7 @@ function configurarSistema() {
     var idAdmin = generarId();
     sheetEmp.appendRow([
       idAdmin, 'Admin', 'Texas Beef', '0000000000', 'Administrador',
-      '', '', '1234', 'Administrador', 'Activo', new Date()
+      '', '', '123456', 'Administrador', 'Activo', new Date()
     ]);
   }
 
@@ -95,7 +95,7 @@ function configurarSistema() {
     throw new Error('No se pudo acceder a la carpeta de Drive. Verifica el DRIVE_FOLDER_ID.');
   }
 
-  return { success: true, message: 'Sistema configurado correctamente. Admin PIN: 1234' };
+  return { success: true, message: 'Sistema configurado correctamente. Admin PIN: 123456' };
 }
 
 // =================== AUTENTICACIÓN ===================

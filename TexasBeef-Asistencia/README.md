@@ -18,7 +18,7 @@ Sistema web empresarial para el control de asistencia de empleados del restauran
 - **Cálculo automático** de horas trabajadas, horas extras y tardanzas
 - **Diseño responsive** optimizado para celulares
 - **Control de roles**: Administrador y Empleado
-- **Acceso por PIN** (4 dígitos)
+- **Acceso por PIN** (6 dígitos numéricos)
 
 ---
 
@@ -180,14 +180,14 @@ Crea estos 3 archivos:
 ### Paso 9: Primer Acceso
 
 1. Abre la URL de la aplicación web en tu navegador
-2. Ingresa el **PIN por defecto del administrador**: **`1234`**
+2. Ingresa el **PIN por defecto del administrador**: **`123456`**
 3. Ya estás dentro del panel de administración
 
 ---
 
 ## 🔧 Uso del Sistema
 
-### Como Administrador (PIN: 1234)
+### Como Administrador (PIN: 123456)
 
 | Sección | Función |
 |---------|---------|
@@ -236,7 +236,7 @@ Si necesitas hacer cambios al código:
 - Los administradores pueden **desactivar** empleados (no pueden acceder con PIN inactivo)
 - Las fotos se almacenan en Google Drive con permisos de solo lectura
 - Los datos están protegidos por la autenticación de Google
-- **Recomendación**: Cambia el PIN del administrador por defecto (1234) después del primer acceso
+- **Recomendación**: Cambia el PIN del administrador por defecto (123456) después del primer acceso
 
 ---
 

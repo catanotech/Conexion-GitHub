@@ -69,8 +69,8 @@ function limpiarPIN() {
 // =================== LOGIN ===================
 function intentarLogin() {
   var pin = obtenerPIN();
-  if (pin.length < 4) {
-    mostrarError('loginError', 'Ingresa tu PIN completo (4 dígitos).');
+  if (pin.length < 6) {
+    mostrarError('loginError', 'Ingresa tu PIN completo (6 dígitos).');
     return;
   }
 
@@ -503,9 +503,9 @@ function guardarEmpleado() {
     return;
   }
 
-  if (pin.length < 4) {
+  if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
     document.getElementById('modalEmpleadoMsg').innerHTML =
-      '<div class="alert alert-error">El PIN debe tener al menos 4 dígitos.</div>';
+      '<div class="alert alert-error">El PIN debe tener exactamente 6 dígitos numéricos.</div>';
     return;
   }
 
