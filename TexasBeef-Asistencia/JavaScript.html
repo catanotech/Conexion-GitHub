@@ -1,0 +1,695 @@
+<script>
+// =================== ESTADO GLOBAL ===================
+var currentUser = null;
+var currentLocation = { lat: null, lng: null };
+var cameraStream = null;
+var capturedPhoto = null;
+var clockInterval = null;
+
+// =================== INICIO ===================
+document.addEventListener('DOMContentLoaded', function() {
+  inicializarPIN();
+  actualizarReloj();
+  clockInterval = setInterval(actualizarReloj, 1000);
+});
+
+// =================== RELOJ ===================
+function actualizarReloj() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2, '0');
+  var m = String(now.getMinutes()).padStart(2, '0');
+  var s = String(now.getSeconds()).padStart(2, '0');
+  var timeEl = document.getElementById('clockTime');
+  if (timeEl) timeEl.textContent = h + ':' + m + ':' + s;
+
+  var dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var dateEl = document.getElementById('clockDate');
+  if (dateEl) dateEl.textContent = dias[now.getDay()] + ', ' + now.getDate() + ' de ' + meses[now.getMonth()] + ' de ' + now.getFullYear();
+}
+
+// =================== PIN INPUT ===================
+function inicializarPIN() {
+  var inputs = document.querySelectorAll('.pin-digit');
+  inputs.forEach(function(input, index) {
+    input.addEventListener('input', function(e) {
+      var val = e.target.value;
+      if (val && index < inputs.length - 1) {
+        inputs[index + 1].focus();
+      }
+      if (val && index === inputs.length - 1) {
+        intentarLogin();
+      }
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !e.target.value && index > 0) {
+        inputs[index - 1].focus();
+      }
+      if (e.key === 'Enter') {
+        intentarLogin();
+      }
+    });
+  });
+  if (inputs.length > 0) inputs[0].focus();
+}
+
+function obtenerPIN() {
+  var inputs = document.querySelectorAll('.pin-digit');
+  var pin = '';
+  inputs.forEach(function(input) { pin += input.value; });
+  return pin;
+}
+
+function limpiarPIN() {
+  var inputs = document.querySelectorAll('.pin-digit');
+  inputs.forEach(function(input) { input.value = ''; });
+  if (inputs.length > 0) inputs[0].focus();
+}
+
+// =================== LOGIN ===================
+function intentarLogin() {
+  var pin = obtenerPIN();
+  if (pin.length < 6) {
+    mostrarError('loginError', 'Ingresa tu PIN completo (6 dígitos).');
+    return;
+  }
+
+  document.getElementById('loginLoader').classList.add('active');
+  document.getElementById('btnLogin').disabled = true;
+  ocultarElemento('loginError');
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById('loginLoader').classList.remove('active');
+      document.getElementById('btnLogin').disabled = false;
+      if (result.success) {
+        currentUser = result.empleado;
+        if (currentUser.rol === 'Administrador') {
+          mostrarVistaAdmin();
+        } else {
+          mostrarVistaEmpleado();
+        }
+      } else {
+        mostrarError('loginError', result.message);
+        limpiarPIN();
+      }
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('loginLoader').classList.remove('active');
+      document.getElementById('btnLogin').disabled = false;
+      mostrarError('loginError', 'Error de conexión. Intenta de nuevo.');
+      limpiarPIN();
+    })
+    .login(pin);
+}
+
+function cerrarSesion() {
+  currentUser = null;
+  capturedPhoto = null;
+  detenerCamara();
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('empleadoView').classList.add('hidden');
+  document.getElementById('adminView').classList.add('hidden');
+  limpiarPIN();
+}
+
+// =================== VISTA EMPLEADO ===================
+function mostrarVistaEmpleado() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('empleadoView').classList.remove('hidden');
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('empNombre').textContent = currentUser.nombre + ' ' + currentUser.apellido;
+
+  obtenerUbicacion();
+  iniciarCamara();
+  cargarEstadoAsistencia();
+  cargarHistorialEmpleado();
+}
+
+// =================== CÁMARA ===================
+function iniciarCamara() {
+  var video = document.getElementById('cameraVideo');
+  var constraints = {
+    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+  };
+
+  navigator.mediaDevices.getUserMedia(constraints)
+    .then(function(stream) {
+      cameraStream = stream;
+      video.srcObject = stream;
+      video.style.display = 'block';
+      document.getElementById('cameraCanvas').style.display = 'none';
+      document.getElementById('photoPreview').classList.add('hidden');
+      document.getElementById('cameraContainer').style.display = 'block';
+    })
+    .catch(function(err) {
+      console.error('Error cámara:', err);
+      document.getElementById('cameraContainer').innerHTML =
+        '<div style="padding:30px; text-align:center; color:#999;">' +
+        '<p style="font-size:2rem;">📷</p>' +
+        '<p>No se pudo acceder a la cámara.</p>' +
+        '<p style="font-size:0.8rem;">Verifica los permisos del navegador.</p></div>';
+    });
+}
+
+function capturarFoto() {
+  var video = document.getElementById('cameraVideo');
+  var canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+
+  // Mostrar preview
+  video.style.display = 'none';
+  document.getElementById('photoPreview').classList.remove('hidden');
+  document.getElementById('previewImg').src = capturedPhoto;
+}
+
+function reiniciarCamara() {
+  capturedPhoto = null;
+  document.getElementById('photoPreview').classList.add('hidden');
+  document.getElementById('cameraVideo').style.display = 'block';
+}
+
+function detenerCamara() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(function(track) { track.stop(); });
+    cameraStream = null;
+  }
+}
+
+// =================== GEOLOCALIZACIÓN ===================
+function obtenerUbicacion() {
+  var geoEl = document.getElementById('geoInfo');
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        currentLocation.lat = position.coords.latitude;
+        currentLocation.lng = position.coords.longitude;
+        geoEl.innerHTML = '📍 Ubicación: ' + currentLocation.lat.toFixed(6) + ', ' + currentLocation.lng.toFixed(6);
+      },
+      function(err) {
+        geoEl.innerHTML = '📍 No se pudo obtener la ubicación. Verifica los permisos.';
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  } else {
+    geoEl.innerHTML = '📍 Geolocalización no soportada en este navegador.';
+  }
+}
+
+// =================== ESTADO DE ASISTENCIA ===================
+function cargarEstadoAsistencia() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        actualizarBotonesAsistencia(result.siguienteAccion, result.registro);
+        actualizarTimeline(result.siguienteAccion, result.registro);
+      }
+    })
+    .withFailureHandler(function(err) { console.error(err); })
+    .getEstadoAsistenciaHoy(currentUser.id);
+}
+
+function actualizarBotonesAsistencia(siguiente, registro) {
+  var btnEntrada = document.getElementById('btnEntrada');
+  var btnSalidaAlm = document.getElementById('btnSalidaAlmuerzo');
+  var btnRegresoAlm = document.getElementById('btnRegresoAlmuerzo');
+  var btnSalida = document.getElementById('btnSalida');
+
+  // Deshabilitar todos primero
+  btnEntrada.disabled = true;
+  btnSalidaAlm.disabled = true;
+  btnRegresoAlm.disabled = true;
+  btnSalida.disabled = true;
+
+  switch(siguiente) {
+    case 'entrada':
+      btnEntrada.disabled = false;
+      break;
+    case 'salida_almuerzo':
+      btnSalidaAlm.disabled = false;
+      btnSalida.disabled = false;
+      break;
+    case 'regreso_almuerzo':
+      btnRegresoAlm.disabled = false;
+      break;
+    case 'salida':
+      btnSalida.disabled = false;
+      break;
+    case 'completado':
+      // Todos deshabilitados - jornada completada
+      document.getElementById('registroMsg').innerHTML =
+        '<div class="alert alert-success">Jornada completada. ¡Buen trabajo!</div>';
+      break;
+  }
+}
+
+function actualizarTimeline(siguiente, registro) {
+  var pasos = ['entrada', 'salida_almuerzo', 'regreso_almuerzo', 'salida'];
+  var dots = ['dot-entrada', 'dot-almuerzo-s', 'dot-almuerzo-r', 'dot-salida'];
+
+  var idx = pasos.indexOf(siguiente);
+  if (siguiente === 'completado') idx = 4;
+
+  for (var i = 0; i < dots.length; i++) {
+    var dot = document.getElementById(dots[i]);
+    dot.classList.remove('done', 'active');
+    if (i < idx) {
+      dot.classList.add('done');
+      dot.textContent = '✓';
+    } else if (i === idx && siguiente !== 'completado') {
+      dot.classList.add('active');
+    }
+  }
+  if (siguiente === 'completado') {
+    dots.forEach(function(id) {
+      var d = document.getElementById(id);
+      d.classList.add('done');
+      d.textContent = '✓';
+    });
+  }
+}
+
+// =================== REGISTRAR ASISTENCIA ===================
+function registrar(accion) {
+  var requiereFoto = (accion === 'entrada' || accion === 'salida');
+
+  if (requiereFoto && !capturedPhoto) {
+    document.getElementById('registroMsg').innerHTML =
+      '<div class="alert alert-warning">Debes tomar una foto antes de registrar.</div>';
+    return;
+  }
+
+  document.getElementById('registroLoader').classList.add('active');
+  document.getElementById('registroMsg').innerHTML = '';
+
+  // Deshabilitar botones
+  document.querySelectorAll('.action-btn').forEach(function(btn) { btn.disabled = true; });
+
+  var datos = {
+    empleadoId: currentUser.id,
+    nombreEmpleado: currentUser.nombre + ' ' + currentUser.apellido,
+    accion: accion,
+    foto: requiereFoto ? capturedPhoto : null,
+    lat: currentLocation.lat,
+    lng: currentLocation.lng
+  };
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById('registroLoader').classList.remove('active');
+      if (result.success) {
+        document.getElementById('registroMsg').innerHTML =
+          '<div class="alert alert-success">' + result.message + '</div>';
+        capturedPhoto = null;
+        reiniciarCamara();
+        cargarEstadoAsistencia();
+        cargarHistorialEmpleado();
+      } else {
+        document.getElementById('registroMsg').innerHTML =
+          '<div class="alert alert-error">' + result.message + '</div>';
+        cargarEstadoAsistencia();
+      }
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('registroLoader').classList.remove('active');
+      document.getElementById('registroMsg').innerHTML =
+        '<div class="alert alert-error">Error al registrar. Intenta de nuevo.</div>';
+      cargarEstadoAsistencia();
+    })
+    .registrarAsistencia(datos);
+}
+
+// =================== HISTORIAL EMPLEADO ===================
+function cargarHistorialEmpleado() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      var container = document.getElementById('historialEmpleado');
+      if (result.success && result.registros.length > 0) {
+        var html = '';
+        var registros = result.registros.slice(0, 10);
+        registros.forEach(function(r) {
+          html += '<div class="historial-item">' +
+            '<div><div class="historial-fecha">' + r.fecha + '</div>' +
+            '<div class="historial-horas">' + r.horaEntrada + ' - ' + (r.horaSalida || 'En curso') + '</div></div>' +
+            '<div style="text-align:right;">' +
+            '<div><strong>' + (parseFloat(r.horasTrabajadas) || 0).toFixed(1) + 'h</strong></div>' +
+            (r.tardanza > 0 ? '<span class="badge badge-tardanza">' + r.tardanza + ' min tarde</span>' : '<span class="badge badge-puntual">Puntual</span>') +
+            '</div></div>';
+        });
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">Sin registros aún.</p>';
+      }
+    })
+    .withFailureHandler(function() {
+      document.getElementById('historialEmpleado').innerHTML =
+        '<p style="text-align:center; color:#999; padding:20px;">Error al cargar historial.</p>';
+    })
+    .getHistorialEmpleado(currentUser.id);
+}
+
+// =================== VISTA ADMINISTRADOR ===================
+function mostrarVistaAdmin() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('empleadoView').classList.add('hidden');
+  document.getElementById('adminView').classList.remove('hidden');
+  document.getElementById('adminNombre').textContent = currentUser.nombre + ' ' + currentUser.apellido;
+
+  cargarDashboard();
+  cargarEmpleados();
+  inicializarFiltros();
+}
+
+// =================== TABS ===================
+function cambiarTab(tabName) {
+  // Actualizar tabs superiores
+  document.querySelectorAll('#adminTabs .tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
+  });
+  // Actualizar nav inferior
+  document.querySelectorAll('.bottom-nav .nav-item').forEach(function(nav) {
+    nav.classList.toggle('active', nav.dataset.tab === tabName);
+  });
+  // Mostrar contenido
+  document.querySelectorAll('.tab-content').forEach(function(tc) {
+    tc.classList.toggle('active', tc.id === 'tab-' + tabName);
+  });
+
+  // Cargar datos según tab
+  if (tabName === 'dashboard') cargarDashboard();
+  if (tabName === 'empleados') cargarEmpleados();
+  if (tabName === 'config') cargarConfiguracion();
+}
+
+// =================== DASHBOARD ===================
+function cargarDashboard() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        var s = result.stats;
+        document.getElementById('statEmpleados').textContent = s.totalEmpleados;
+        document.getElementById('statPresentes').textContent = s.presentesHoy;
+        document.getElementById('statAusentes').textContent = s.ausentesHoy;
+        document.getElementById('statTardanzas').textContent = s.tardanzasHoy;
+        document.getElementById('statHoras').textContent = s.horasHoy;
+        document.getElementById('statExtras').textContent = s.extrasHoy;
+        document.getElementById('statTardanzasMes').textContent = s.tardanzasMes;
+        document.getElementById('statHorasMes').textContent = s.horasMes;
+        document.getElementById('statExtrasMes').textContent = s.extrasMes;
+        document.getElementById('statDiasMes').textContent = s.diasTrabajadosMes;
+      }
+    })
+    .withFailureHandler(function(err) { console.error('Dashboard error:', err); })
+    .getEstadisticasDashboard();
+}
+
+// =================== CRUD EMPLEADOS ===================
+var listaEmpleados = [];
+
+function cargarEmpleados() {
+  document.getElementById('empleadosLoader').classList.add('active');
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById('empleadosLoader').classList.remove('active');
+      if (result.success) {
+        listaEmpleados = result.empleados;
+        renderizarEmpleados(result.empleados);
+        actualizarFiltroEmpleados(result.empleados);
+      }
+    })
+    .withFailureHandler(function() {
+      document.getElementById('empleadosLoader').classList.remove('active');
+    })
+    .getEmpleados();
+}
+
+function renderizarEmpleados(empleados) {
+  var tbody = document.getElementById('empleadosBody');
+  if (empleados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">No hay empleados registrados.</td></tr>';
+    return;
+  }
+  var html = '';
+  empleados.forEach(function(emp) {
+    html += '<tr>' +
+      '<td><strong>' + emp.nombre + ' ' + emp.apellido + '</strong></td>' +
+      '<td>' + emp.cedula + '</td>' +
+      '<td>' + emp.cargo + '</td>' +
+      '<td><span class="badge badge-' + emp.rol.toLowerCase() + '">' + emp.rol + '</span></td>' +
+      '<td><span class="badge badge-' + emp.estado.toLowerCase() + '">' + emp.estado + '</span></td>' +
+      '<td>' +
+      '<button class="btn btn-small btn-outline" onclick="editarEmpleado(\'' + emp.id + '\')" style="margin-right:4px;">✏</button>' +
+      '<button class="btn btn-small btn-danger" onclick="confirmarDesactivar(\'' + emp.id + '\',\'' + emp.nombre + ' ' + emp.apellido + '\')">✕</button>' +
+      '</td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function abrirModalEmpleado() {
+  document.getElementById('modalEmpleadoTitle').textContent = 'Nuevo Empleado';
+  document.getElementById('empId').value = '';
+  document.getElementById('empNombreInput').value = '';
+  document.getElementById('empApellidoInput').value = '';
+  document.getElementById('empCedulaInput').value = '';
+  document.getElementById('empCargoInput').value = '';
+  document.getElementById('empTelInput').value = '';
+  document.getElementById('empEmailInput').value = '';
+  document.getElementById('empPinInput').value = '';
+  document.getElementById('empRolInput').value = 'Empleado';
+  document.getElementById('empEstadoGroup').style.display = 'none';
+  document.getElementById('modalEmpleadoMsg').innerHTML = '';
+  document.getElementById('modalEmpleado').classList.remove('hidden');
+}
+
+function editarEmpleado(id) {
+  var emp = listaEmpleados.find(function(e) { return String(e.id) === String(id); });
+  if (!emp) return;
+
+  document.getElementById('modalEmpleadoTitle').textContent = 'Editar Empleado';
+  document.getElementById('empId').value = emp.id;
+  document.getElementById('empNombreInput').value = emp.nombre;
+  document.getElementById('empApellidoInput').value = emp.apellido;
+  document.getElementById('empCedulaInput').value = emp.cedula;
+  document.getElementById('empCargoInput').value = emp.cargo;
+  document.getElementById('empTelInput').value = emp.telefono || '';
+  document.getElementById('empEmailInput').value = emp.email || '';
+  document.getElementById('empPinInput').value = emp.pin;
+  document.getElementById('empRolInput').value = emp.rol;
+  document.getElementById('empEstadoInput').value = emp.estado;
+  document.getElementById('empEstadoGroup').style.display = 'block';
+  document.getElementById('modalEmpleadoMsg').innerHTML = '';
+  document.getElementById('modalEmpleado').classList.remove('hidden');
+}
+
+function cerrarModalEmpleado() {
+  document.getElementById('modalEmpleado').classList.add('hidden');
+}
+
+function guardarEmpleado() {
+  var id = document.getElementById('empId').value;
+  var nombre = document.getElementById('empNombreInput').value.trim();
+  var apellido = document.getElementById('empApellidoInput').value.trim();
+  var cedula = document.getElementById('empCedulaInput').value.trim();
+  var cargo = document.getElementById('empCargoInput').value.trim();
+  var pin = document.getElementById('empPinInput').value.trim();
+
+  if (!nombre || !apellido || !cedula || !cargo || !pin) {
+    document.getElementById('modalEmpleadoMsg').innerHTML =
+      '<div class="alert alert-error">Completa todos los campos obligatorios (*).</div>';
+    return;
+  }
+
+  if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+    document.getElementById('modalEmpleadoMsg').innerHTML =
+      '<div class="alert alert-error">El PIN debe tener exactamente 6 dígitos numéricos.</div>';
+    return;
+  }
+
+  var empleado = {
+    id: id,
+    nombre: nombre,
+    apellido: apellido,
+    cedula: cedula,
+    cargo: cargo,
+    telefono: document.getElementById('empTelInput').value.trim(),
+    email: document.getElementById('empEmailInput').value.trim(),
+    pin: pin,
+    rol: document.getElementById('empRolInput').value,
+    estado: id ? document.getElementById('empEstadoInput').value : 'Activo'
+  };
+
+  document.getElementById('btnGuardarEmpleado').disabled = true;
+
+  var callback = function(result) {
+    document.getElementById('btnGuardarEmpleado').disabled = false;
+    if (result.success) {
+      cerrarModalEmpleado();
+      cargarEmpleados();
+    } else {
+      document.getElementById('modalEmpleadoMsg').innerHTML =
+        '<div class="alert alert-error">' + result.message + '</div>';
+    }
+  };
+
+  var errorCallback = function(err) {
+    document.getElementById('btnGuardarEmpleado').disabled = false;
+    document.getElementById('modalEmpleadoMsg').innerHTML =
+      '<div class="alert alert-error">Error al guardar. Intenta de nuevo.</div>';
+  };
+
+  if (id) {
+    google.script.run.withSuccessHandler(callback).withFailureHandler(errorCallback).updateEmpleado(empleado);
+  } else {
+    google.script.run.withSuccessHandler(callback).withFailureHandler(errorCallback).addEmpleado(empleado);
+  }
+}
+
+function confirmarDesactivar(id, nombre) {
+  document.getElementById('eliminarMsg').textContent = '¿Desactivar a ' + nombre + '?';
+  document.getElementById('btnConfirmarEliminar').onclick = function() {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        cerrarModalEliminar();
+        if (result.success) cargarEmpleados();
+      })
+      .deleteEmpleado(id);
+  };
+  document.getElementById('modalEliminar').classList.remove('hidden');
+}
+
+function cerrarModalEliminar() {
+  document.getElementById('modalEliminar').classList.add('hidden');
+}
+
+// =================== ASISTENCIA (ADMIN) ===================
+function inicializarFiltros() {
+  var hoy = new Date();
+  var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  document.getElementById('filtroDesde').value = formatDate(inicioMes);
+  document.getElementById('filtroHasta').value = formatDate(hoy);
+}
+
+function actualizarFiltroEmpleados(empleados) {
+  var select = document.getElementById('filtroEmpleado');
+  select.innerHTML = '<option value="">Todos</option>';
+  empleados.forEach(function(emp) {
+    if (emp.estado === 'Activo') {
+      select.innerHTML += '<option value="' + emp.id + '">' + emp.nombre + ' ' + emp.apellido + '</option>';
+    }
+  });
+}
+
+function buscarAsistencia() {
+  var filtros = {
+    fechaInicio: document.getElementById('filtroDesde').value,
+    fechaFin: document.getElementById('filtroHasta').value,
+    empleadoId: document.getElementById('filtroEmpleado').value
+  };
+
+  document.getElementById('asistenciaLoader').classList.add('active');
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById('asistenciaLoader').classList.remove('active');
+      if (result.success) {
+        renderizarAsistencia(result.registros);
+      }
+    })
+    .withFailureHandler(function() {
+      document.getElementById('asistenciaLoader').classList.remove('active');
+    })
+    .getResumenAsistencia(filtros);
+}
+
+function renderizarAsistencia(registros) {
+  var tbody = document.getElementById('asistenciaBody');
+  if (registros.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999; padding:30px;">Sin registros en este período.</td></tr>';
+    return;
+  }
+
+  var html = '';
+  registros.forEach(function(r) {
+    var tardanzaBadge = r.minutosTardanza > 0
+      ? '<span class="badge badge-tardanza">' + r.minutosTardanza + ' min</span>'
+      : '<span class="badge badge-puntual">OK</span>';
+
+    html += '<tr>' +
+      '<td>' + r.fecha + '</td>' +
+      '<td>' + r.nombreEmpleado + '</td>' +
+      '<td>' + (r.horaEntrada || '-') + '</td>' +
+      '<td>' + (r.horaSalidaAlmuerzo || '-') + '</td>' +
+      '<td>' + (r.horaRegresoAlmuerzo || '-') + '</td>' +
+      '<td>' + (r.horaSalida || '-') + '</td>' +
+      '<td>' + (parseFloat(r.horasTrabajadas) || 0).toFixed(1) + '</td>' +
+      '<td>' + (parseFloat(r.horasExtras) || 0).toFixed(1) + '</td>' +
+      '<td>' + tardanzaBadge + '</td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// =================== CONFIGURACIÓN ===================
+function cargarConfiguracion() {
+  google.script.run
+    .withSuccessHandler(function(config) {
+      if (config.HoraEntrada) document.getElementById('cfgEntrada').value = config.HoraEntrada;
+      if (config.HoraSalida) document.getElementById('cfgSalida').value = config.HoraSalida;
+      if (config.HoraAlmuerzoInicio) document.getElementById('cfgAlmuerzoInicio').value = config.HoraAlmuerzoInicio;
+      if (config.HoraAlmuerzoFin) document.getElementById('cfgAlmuerzoFin').value = config.HoraAlmuerzoFin;
+      if (config.HorasJornada) document.getElementById('cfgHorasJornada').value = config.HorasJornada;
+      if (config.ToleranciaMinutos) document.getElementById('cfgTolerancia').value = config.ToleranciaMinutos;
+    })
+    .getConfiguracion();
+}
+
+function guardarConfiguracion() {
+  var configData = {
+    HoraEntrada: document.getElementById('cfgEntrada').value,
+    HoraSalida: document.getElementById('cfgSalida').value,
+    HoraAlmuerzoInicio: document.getElementById('cfgAlmuerzoInicio').value,
+    HoraAlmuerzoFin: document.getElementById('cfgAlmuerzoFin').value,
+    HorasJornada: document.getElementById('cfgHorasJornada').value,
+    ToleranciaMinutos: document.getElementById('cfgTolerancia').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        document.getElementById('configMsg').innerHTML =
+          '<div class="alert alert-success">' + result.message + '</div>';
+      } else {
+        document.getElementById('configMsg').innerHTML =
+          '<div class="alert alert-error">' + result.message + '</div>';
+      }
+      setTimeout(function() { document.getElementById('configMsg').innerHTML = ''; }, 3000);
+    })
+    .withFailureHandler(function() {
+      document.getElementById('configMsg').innerHTML =
+        '<div class="alert alert-error">Error al guardar configuración.</div>';
+    })
+    .updateConfiguracion(configData);
+}
+
+// =================== UTILIDADES ===================
+function mostrarError(elementId, message) {
+  var el = document.getElementById(elementId);
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
+
+function ocultarElemento(elementId) {
+  document.getElementById(elementId).classList.add('hidden');
+}
+
+function formatDate(date) {
+  var y = date.getFullYear();
+  var m = String(date.getMonth() + 1).padStart(2, '0');
+  var d = String(date.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+</script>
