@@ -13,6 +13,7 @@ const DRIVE_FOLDER_ID = 'TU_FOLDER_ID_AQUI';
 const SHEET_EMPLEADOS = 'Empleados';
 const SHEET_ASISTENCIA = 'Asistencia';
 const SHEET_CONFIG = 'Configuracion';
+const SHEET_AUDITORIA = 'Auditoria';
 
 // =================== WEB APP ===================
 
@@ -88,6 +89,15 @@ function configurarSistema() {
     sheetConf.appendRow(['NombreEmpresa', 'Texas Beef House of Grill']);
   }
 
+  // Crear hoja Auditoria
+  var sheetAud = ss.getSheetByName(SHEET_AUDITORIA);
+  if (!sheetAud) {
+    sheetAud = ss.insertSheet(SHEET_AUDITORIA);
+    sheetAud.appendRow(['Fecha', 'Hora', 'Usuario', 'Accion', 'Detalle', 'Dispositivo']);
+    sheetAud.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#b71c1c').setFontColor('#ffffff');
+    sheetAud.setFrozenRows(1);
+  }
+
   // Verificar carpeta de Drive
   try {
     DriveApp.getFolderById(DRIVE_FOLDER_ID);
@@ -108,6 +118,8 @@ function login(pin) {
 
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][7]) === String(pin) && data[i][9] === 'Activo') {
+        var nombreCompleto = data[i][1] + ' ' + data[i][2];
+        registrarAuditoria(nombreCompleto, 'Login', 'Inicio de sesión exitoso - Rol: ' + data[i][8]);
         return {
           success: true,
           empleado: {
@@ -123,6 +135,7 @@ function login(pin) {
         };
       }
     }
+    registrarAuditoria('Desconocido', 'Login fallido', 'Intento con PIN inválido');
     return { success: false, message: 'PIN incorrecto o empleado inactivo.' };
   } catch (err) {
     return { success: false, message: 'Error de conexión: ' + err.message };
@@ -355,6 +368,7 @@ function registrarAsistencia(datos) {
           '', '', '', '', '', '',
           '', '', tardanza, obs
         ]);
+        registrarAuditoria(datos.nombreEmpleado, 'Registro entrada', 'Entrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss'));
         return { success: true, message: 'Entrada registrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') };
 
       case 'salida_almuerzo':
@@ -362,6 +376,7 @@ function registrarAsistencia(datos) {
           return { success: false, message: 'No hay registro de entrada hoy.' };
         }
         sheet.getRange(filaExistente, 9).setValue(ahora);
+        registrarAuditoria(datos.nombreEmpleado, 'Salida almuerzo', 'Salida a almuerzo a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss'));
         return { success: true, message: 'Salida a almuerzo registrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') };
 
       case 'regreso_almuerzo':
@@ -369,6 +384,7 @@ function registrarAsistencia(datos) {
           return { success: false, message: 'No hay registro de entrada hoy.' };
         }
         sheet.getRange(filaExistente, 10).setValue(ahora);
+        registrarAuditoria(datos.nombreEmpleado, 'Regreso almuerzo', 'Regreso de almuerzo a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss'));
         return { success: true, message: 'Regreso de almuerzo registrado a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') };
 
       case 'salida':
@@ -395,6 +411,7 @@ function registrarAsistencia(datos) {
           (resultado.horasExtras > 0 ? ' | Extras: ' + resultado.horasExtras.toFixed(2) : '')
         );
 
+        registrarAuditoria(datos.nombreEmpleado, 'Registro salida', 'Salida a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') + ' - Horas: ' + resultado.horasTrabajadas.toFixed(2));
         return {
           success: true,
           message: 'Salida registrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') +
@@ -654,6 +671,24 @@ function getHistorialEmpleado(empleadoId) {
     return { success: true, registros: registros.reverse() };
   } catch (err) {
     return { success: false, message: err.message };
+  }
+}
+
+// =================== AUDITORÍA ===================
+
+function registrarAuditoria(usuario, accion, detalle) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(SHEET_AUDITORIA);
+    if (!sheet) return;
+
+    var ahora = new Date();
+    var fecha = Utilities.formatDate(ahora, 'America/Bogota', 'yyyy-MM-dd');
+    var hora = Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss');
+
+    sheet.appendRow([fecha, hora, usuario, accion, detalle, 'Web App']);
+  } catch (err) {
+    Logger.log('Error en auditoría: ' + err.message);
   }
 }
 

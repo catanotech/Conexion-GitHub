@@ -84,6 +84,16 @@ Sistema web empresarial para el control de asistencia de empleados del restauran
 | ToleranciaMinutos | 15 |
 | NombreEmpresa | Texas Beef House of Grill |
 
+### Hoja: `Auditoria`
+| Columna | Campo |
+|---------|-------|
+| A | Fecha |
+| B | Hora |
+| C | Usuario |
+| D | Acción |
+| E | Detalle |
+| F | Dispositivo |
+
 ---
 
 ## 📋 Instrucciones de Instalación Paso a Paso
