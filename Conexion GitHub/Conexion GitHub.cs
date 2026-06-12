@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace Conexion_GitHub
 {
-    internal class Conexion_GitHub
+    public class Conexion_GitHub
     {
+        
+
     }
 }
