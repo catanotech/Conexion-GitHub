@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Texas Beef House of Grill - Control de Asistencia</title>
+  <?!= include('Estilos'); ?>
+</head>
+<body>
+
+  <!-- =================== PANTALLA DE LOGIN =================== -->
+  <div id="loginView" class="login-container">
+    <div class="login-card">
+      <div class="brand">
+        <img src="https://raw.githubusercontent.com/catanotech/Conexion-GitHub/devin/1781235971-texas-beef-asistencia/TexasBeef-Asistencia/TexasBeef.jpg" alt="Texas Beef House of Grill" class="brand-logo">
+        <h2>Texas Beef</h2>
+        <p class="brand-subtitle">House of Grill</p>
+        <p>Control de Asistencia</p>
+      </div>
+      <p style="color:#666; margin-bottom:10px; font-size:0.9rem;">Ingresa tu PIN de acceso</p>
+      <div class="pin-input" id="pinContainer">
+        <input type="tel" maxlength="1" class="pin-digit" data-index="0" inputmode="numeric">
+        <input type="tel" maxlength="1" class="pin-digit" data-index="1" inputmode="numeric">
+        <input type="tel" maxlength="1" class="pin-digit" data-index="2" inputmode="numeric">
+        <input type="tel" maxlength="1" class="pin-digit" data-index="3" inputmode="numeric">
+      </div>
+      <div id="loginError" class="alert alert-error hidden"></div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="intentarLogin()" id="btnLogin">
+        Ingresar
+      </button>
+      <div class="loader" id="loginLoader">
+        <div class="spinner"></div>
+        <p>Verificando...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== VISTA EMPLEADO =================== -->
+  <div id="empleadoView" class="hidden">
+    <div class="header">
+      <h1><img src="https://raw.githubusercontent.com/catanotech/Conexion-GitHub/devin/1781235971-texas-beef-asistencia/TexasBeef-Asistencia/TexasBeef.jpg" alt="Texas Beef" class="header-logo"> Texas Beef</h1>
+      <div class="header-actions">
+        <span class="header-user" id="empNombre"></span>
+        <button class="btn-icon" onclick="cerrarSesion()" title="Salir">⏻</button>
+      </div>
+    </div>
+
+    <div class="checkin-container">
+      <!-- Reloj -->
+      <div class="clock-display">
+        <div class="time" id="clockTime">--:--:--</div>
+        <div class="date" id="clockDate"></div>
+      </div>
+
+      <!-- Timeline de estado -->
+      <div class="status-timeline" id="statusTimeline">
+        <div class="timeline-step">
+          <div class="timeline-dot" id="dot-entrada">1</div>
+          <span>Entrada</span>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot" id="dot-almuerzo-s">2</div>
+          <span>Almuerzo</span>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot" id="dot-almuerzo-r">3</div>
+          <span>Regreso</span>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot" id="dot-salida">4</div>
+          <span>Salida</span>
+        </div>
+      </div>
+
+      <!-- Cámara -->
+      <div class="card">
+        <div class="card-header">Captura de Fotografía</div>
+        <div class="camera-container" id="cameraContainer">
+          <video id="cameraVideo" autoplay playsinline></video>
+          <canvas id="cameraCanvas"></canvas>
+          <div class="camera-overlay">
+            <button class="btn-camera" id="btnCapture" onclick="capturarFoto()">📷</button>
+          </div>
+        </div>
+        <div id="photoPreview" class="hidden text-center mt-10">
+          <img id="previewImg" style="max-width:100%; border-radius:8px;" />
+          <button class="btn btn-outline btn-small mt-10" onclick="reiniciarCamara()">Tomar otra</button>
+        </div>
+      </div>
+
+      <!-- Geolocalización -->
+      <div class="geo-info" id="geoInfo">
+        📍 Obteniendo ubicación...
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="action-buttons" id="actionButtons">
+        <button class="action-btn entrada" id="btnEntrada" onclick="registrar('entrada')">
+          ▶ Registrar Entrada
+        </button>
+        <button class="action-btn salida-almuerzo" id="btnSalidaAlmuerzo" onclick="registrar('salida_almuerzo')" disabled>
+          🍽 Salida a Almuerzo
+        </button>
+        <button class="action-btn regreso-almuerzo" id="btnRegresoAlmuerzo" onclick="registrar('regreso_almuerzo')" disabled>
+          🔙 Regreso de Almuerzo
+        </button>
+        <button class="action-btn salida" id="btnSalida" onclick="registrar('salida')">
+          ⏹ Registrar Salida
+        </button>
+      </div>
+
+      <div class="loader" id="registroLoader">
+        <div class="spinner"></div>
+        <p>Registrando...</p>
+      </div>
+
+      <div id="registroMsg" class="mt-10"></div>
+
+      <!-- Historial del empleado -->
+      <div class="card mt-20">
+        <div class="card-header">
+          Mi Historial Reciente
+          <button class="btn btn-small btn-outline" onclick="cargarHistorialEmpleado()">Actualizar</button>
+        </div>
+        <div id="historialEmpleado">
+          <div class="loader active"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== VISTA ADMINISTRADOR =================== -->
+  <div id="adminView" class="hidden">
+    <div class="header">
+      <h1><img src="https://raw.githubusercontent.com/catanotech/Conexion-GitHub/devin/1781235971-texas-beef-asistencia/TexasBeef-Asistencia/TexasBeef.jpg" alt="Texas Beef" class="header-logo"> Texas Beef - Admin</h1>
+      <div class="header-actions">
+        <span class="header-user" id="adminNombre"></span>
+        <button class="btn-icon" onclick="cerrarSesion()" title="Salir">⏻</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="adminTabs">
+      <div class="tab active" data-tab="dashboard" onclick="cambiarTab('dashboard')">📊 Dashboard</div>
+      <div class="tab" data-tab="empleados" onclick="cambiarTab('empleados')">👥 Empleados</div>
+      <div class="tab" data-tab="asistencia" onclick="cambiarTab('asistencia')">📋 Asistencia</div>
+      <div class="tab" data-tab="config" onclick="cambiarTab('config')">⚙ Config</div>
+    </div>
+
+    <!-- TAB: Dashboard -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="content">
+        <div class="section-title">📊 Resumen del Día</div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="statEmpleados">-</div>
+            <div class="stat-label">Empleados</div>
+          </div>
+          <div class="stat-card verde">
+            <div class="stat-value" id="statPresentes">-</div>
+            <div class="stat-label">Presentes Hoy</div>
+          </div>
+          <div class="stat-card naranja">
+            <div class="stat-value" id="statAusentes">-</div>
+            <div class="stat-label">Ausentes Hoy</div>
+          </div>
+          <div class="stat-card dorado">
+            <div class="stat-value" id="statTardanzas">-</div>
+            <div class="stat-label">Tardanzas Hoy</div>
+          </div>
+          <div class="stat-card azul">
+            <div class="stat-value" id="statHoras">-</div>
+            <div class="stat-label">Horas Hoy</div>
+          </div>
+          <div class="stat-card verde">
+            <div class="stat-value" id="statExtras">-</div>
+            <div class="stat-label">Extras Hoy</div>
+          </div>
+        </div>
+
+        <div class="section-title">📅 Resumen del Mes</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="statTardanzasMes">-</div>
+            <div class="stat-label">Tardanzas Mes</div>
+          </div>
+          <div class="stat-card azul">
+            <div class="stat-value" id="statHorasMes">-</div>
+            <div class="stat-label">Horas Mes</div>
+          </div>
+          <div class="stat-card verde">
+            <div class="stat-value" id="statExtrasMes">-</div>
+            <div class="stat-label">Extras Mes</div>
+          </div>
+          <div class="stat-card dorado">
+            <div class="stat-value" id="statDiasMes">-</div>
+            <div class="stat-label">Días Trabajados</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Empleados -->
+    <div class="tab-content" id="tab-empleados">
+      <div class="content">
+        <div class="flex-between mb-20">
+          <div class="section-title" style="margin-bottom:0;">👥 Gestión de Empleados</div>
+          <button class="btn btn-primary btn-small" onclick="abrirModalEmpleado()">+ Nuevo</button>
+        </div>
+
+        <div class="loader" id="empleadosLoader">
+          <div class="spinner"></div>
+          <p>Cargando empleados...</p>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table id="tablaEmpleados">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Cédula</th>
+                  <th>Cargo</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="empleadosBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Asistencia -->
+    <div class="tab-content" id="tab-asistencia">
+      <div class="content">
+        <div class="section-title">📋 Registros de Asistencia</div>
+
+        <div class="filters">
+          <div class="form-group">
+            <label>Desde</label>
+            <input type="date" class="form-control" id="filtroDesde">
+          </div>
+          <div class="form-group">
+            <label>Hasta</label>
+            <input type="date" class="form-control" id="filtroHasta">
+          </div>
+          <div class="form-group">
+            <label>Empleado</label>
+            <select class="form-control" id="filtroEmpleado">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary btn-block" onclick="buscarAsistencia()">Buscar</button>
+          </div>
+        </div>
+
+        <div class="loader" id="asistenciaLoader">
+          <div class="spinner"></div>
+          <p>Cargando registros...</p>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Empleado</th>
+                  <th>Entrada</th>
+                  <th>Sal. Almuerzo</th>
+                  <th>Reg. Almuerzo</th>
+                  <th>Salida</th>
+                  <th>Horas</th>
+                  <th>Extras</th>
+                  <th>Tardanza</th>
+                </tr>
+              </thead>
+              <tbody id="asistenciaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Configuración -->
+    <div class="tab-content" id="tab-config">
+      <div class="content">
+        <div class="section-title">⚙ Configuración del Sistema</div>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hora de Entrada</label>
+              <input type="time" class="form-control" id="cfgEntrada" value="08:00">
+            </div>
+            <div class="form-group">
+              <label>Hora de Salida</label>
+              <input type="time" class="form-control" id="cfgSalida" value="17:00">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Almuerzo Inicio</label>
+              <input type="time" class="form-control" id="cfgAlmuerzoInicio" value="12:00">
+            </div>
+            <div class="form-group">
+              <label>Almuerzo Fin</label>
+              <input type="time" class="form-control" id="cfgAlmuerzoFin" value="13:00">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Horas de Jornada</label>
+              <input type="number" class="form-control" id="cfgHorasJornada" value="8">
+            </div>
+            <div class="form-group">
+              <label>Tolerancia (min)</label>
+              <input type="number" class="form-control" id="cfgTolerancia" value="15">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block mt-20" onclick="guardarConfiguracion()">
+            Guardar Configuración
+          </button>
+          <div id="configMsg" class="mt-10"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav (mobile) -->
+    <div class="bottom-nav" id="bottomNav">
+      <div class="nav-items">
+        <div class="nav-item active" data-tab="dashboard" onclick="cambiarTab('dashboard')">
+          <i>📊</i> Dashboard
+        </div>
+        <div class="nav-item" data-tab="empleados" onclick="cambiarTab('empleados')">
+          <i>👥</i> Empleados
+        </div>
+        <div class="nav-item" data-tab="asistencia" onclick="cambiarTab('asistencia')">
+          <i>📋</i> Asistencia
+        </div>
+        <div class="nav-item" data-tab="config" onclick="cambiarTab('config')">
+          <i>⚙</i> Config
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== MODAL EMPLEADO =================== -->
+  <div id="modalEmpleado" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalEmpleadoTitle">Nuevo Empleado</h3>
+        <button class="close-btn" onclick="cerrarModalEmpleado()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="empId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" class="form-control" id="empNombreInput" placeholder="Nombre">
+          </div>
+          <div class="form-group">
+            <label>Apellido *</label>
+            <input type="text" class="form-control" id="empApellidoInput" placeholder="Apellido">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cédula *</label>
+            <input type="text" class="form-control" id="empCedulaInput" placeholder="Cédula">
+          </div>
+          <div class="form-group">
+            <label>Cargo *</label>
+            <input type="text" class="form-control" id="empCargoInput" placeholder="Ej: Mesero, Chef...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="tel" class="form-control" id="empTelInput" placeholder="Teléfono">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="form-control" id="empEmailInput" placeholder="email@ejemplo.com">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>PIN de Acceso *</label>
+            <input type="text" class="form-control" id="empPinInput" maxlength="6" placeholder="4 a 6 dígitos">
+          </div>
+          <div class="form-group">
+            <label>Rol *</label>
+            <select class="form-control" id="empRolInput">
+              <option value="Empleado">Empleado</option>
+              <option value="Administrador">Administrador</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="empEstadoGroup" style="display:none;">
+          <label>Estado</label>
+          <select class="form-control" id="empEstadoInput">
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div id="modalEmpleadoMsg" class="mt-10"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalEmpleado()">Cancelar</button>
+        <button class="btn btn-primary" id="btnGuardarEmpleado" onclick="guardarEmpleado()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== MODAL CONFIRMACIÓN ELIMINAR =================== -->
+  <div id="modalEliminar" class="modal-overlay hidden">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-header">
+        <h3>Confirmar Acción</h3>
+        <button class="close-btn" onclick="cerrarModalEliminar()">&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <p style="font-size:2.5rem;">⚠</p>
+        <p id="eliminarMsg" style="margin:10px 0;">¿Desactivar este empleado?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalEliminar()">Cancelar</button>
+        <button class="btn btn-danger" id="btnConfirmarEliminar">Desactivar</button>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

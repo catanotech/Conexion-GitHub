@@ -1,0 +1,333 @@
+# PROYECTO: SISTEMA DE CONTROL DE ASISTENCIA PARA RESTAURANTE CON GOOGLE APPS SCRIPT
+
+Actúa como un Arquitecto de Software, Consultor de Implementación, Analista Funcional, Especialista en Ciberseguridad y Desarrollador Senior con más de 50 años de experiencia en proyectos empresariales.
+
+Voy a proporcionarte:
+
+* Código fuente de Google Apps Script.
+* Archivos HTML, CSS y JavaScript.
+* Estructura de Google Sheets.
+* Capturas de pantalla del restaurante.
+* Requerimientos operativos del negocio.
+
+Tu función será diseñar, auditar, mejorar y documentar una solución profesional de control de asistencia para un restaurante con máximo 50 empleados.
+
+---
+
+# CONTEXTO DEL NEGOCIO
+
+Tipo de empresa: Restaurante.
+
+Ubicación:
+
+Medellín, Antioquia, Colombia.
+
+Zona horaria obligatoria:
+
+America/Bogota.
+
+Cantidad máxima de empleados:
+
+50.
+
+La solución debe funcionar desde:
+
+* Celulares Android.
+* iPhone.
+* Tablets.
+* Computadores.
+
+No requiere instalación local.
+
+Debe funcionar mediante navegador web.
+
+La solución será desarrollada utilizando:
+
+* Google Apps Script.
+* Google Sheets.
+* HTML.
+* CSS.
+* JavaScript.
+
+---
+
+# OBJETIVO DEL SISTEMA
+
+Permitir al personal registrar:
+
+* Entrada.
+* Inicio de almuerzo.
+* Fin de almuerzo.
+* Salida.
+
+Todo desde cualquier dispositivo autorizado.
+
+El sistema debe ser simple, rápido, seguro y profesional.
+
+---
+
+# FASE 1 - AUDITORÍA DEL CÓDIGO
+
+Analiza completamente el código que te entregue.
+
+Debes identificar:
+
+* Errores lógicos.
+* Problemas de rendimiento.
+* Problemas de seguridad.
+* Código duplicado.
+* Validaciones faltantes.
+* Variables innecesarias.
+* Problemas de experiencia de usuario.
+* Problemas de compatibilidad móvil.
+
+Explica cada hallazgo y su solución.
+
+No generes código hasta finalizar el análisis.
+
+---
+
+# FASE 2 - SEGURIDAD
+
+Implementar obligatoriamente:
+
+## Contraseña
+
+La contraseña debe contener exactamente 6 dígitos numéricos.
+
+Ejemplos válidos:
+
+123456
+654321
+
+Ejemplos inválidos:
+
+12345
+1234567
+abc123
+
+---
+
+## Roles
+
+Crear:
+
+Administrador
+Empleado
+
+---
+
+## Auditoría
+
+Registrar:
+
+* Usuario.
+* Fecha.
+* Hora.
+* Acción realizada.
+* Dispositivo utilizado.
+
+---
+
+## Protección de datos
+
+Evitar:
+
+* Manipulación de registros.
+* Modificación directa de hojas.
+* Accesos no autorizados.
+* Registros duplicados.
+
+---
+
+# FASE 3 - CAPTURA DE FOTO
+
+La fotografía es obligatoria para registrar asistencia.
+
+Por seguridad:
+
+NO permitir:
+
+* Subir archivos.
+* Adjuntar imágenes.
+* Seleccionar imágenes desde galería.
+
+Únicamente permitir:
+
+* Captura directa desde la cámara.
+
+Analiza el código actual.
+
+Si la cámara no funciona:
+
+1. Identifica la causa.
+2. Explica el error.
+3. Corrige el problema.
+4. Propón la mejor práctica para dispositivos móviles.
+
+---
+
+# FASE 4 - CONTROL DE HORARIOS
+
+NO utilizar horarios quemados en el código.
+
+Toda configuración debe gestionarse desde Google Sheets.
+
+---
+
+## Reglas laborales
+
+Horas laborales:
+
+8 horas.
+
+Tiempo de almuerzo:
+
+30 minutos.
+
+---
+
+Los empleados pueden ingresar a cualquier hora.
+
+Ejemplo:
+
+Entrada: 7:13 AM
+
+Inicio almuerzo: 12:00 PM
+
+Fin almuerzo: 12:30 PM
+
+Salida obligatoria: 3:43 PM
+
+---
+
+El sistema debe calcular automáticamente:
+
+* Horas trabajadas.
+* Tiempo de almuerzo.
+* Hora estimada de salida.
+* Cumplimiento de jornada.
+
+---
+
+# FASE 5 - GOOGLE SHEETS
+
+Diseñar la estructura completa.
+
+## Hoja Usuarios
+
+ID
+Nombre
+Documento
+Cargo
+Rol
+Contraseña
+Estado
+
+---
+
+## Hoja Asistencia
+
+ID
+Fecha
+Empleado
+Entrada
+Inicio Almuerzo
+Fin Almuerzo
+Salida
+Horas Trabajadas
+Estado Jornada
+Foto
+
+---
+
+## Hoja Configuración
+
+Empresa
+Zona Horaria
+Horas Laborales
+Tiempo Almuerzo
+
+---
+
+## Hoja Auditoría
+
+Fecha
+Hora
+Usuario
+Acción
+Detalle
+
+---
+
+# FASE 6 - INTERFAZ
+
+Analiza las imágenes del restaurante.
+
+Diseña una interfaz basada en los colores corporativos.
+
+Debes definir:
+
+* Color principal.
+* Color secundario.
+* Color para botones.
+* Color para alertas.
+* Color para fondos.
+* Color para encabezados.
+
+La interfaz debe ser:
+
+* Moderna.
+* Profesional.
+* Responsiva.
+* Optimizada para celulares.
+
+---
+
+# FASE 7 - REPORTES
+
+Crear reportes para:
+
+* Entradas.
+* Salidas.
+* Almuerzos.
+* Horas trabajadas.
+* Horas faltantes.
+* Empleados activos.
+
+Permitir exportar:
+
+* Excel.
+* PDF.
+
+---
+
+# FASE 8 - BUENAS PRÁCTICAS
+
+Aplicar:
+
+* Principio DRY.
+* Código modular.
+* Validaciones de entrada.
+* Manejo de errores.
+* Registro de eventos.
+* Comentarios técnicos.
+* Optimización para Google Apps Script.
+
+---
+
+# FORMA DE RESPONDER
+
+Trabaja siempre en este orden:
+
+1. Analizar.
+2. Detectar problemas.
+3. Explicar riesgos.
+4. Proponer mejoras.
+5. Diseñar arquitectura.
+6. Generar código.
+7. Explicar cada cambio paso a paso.
+
+Nunca omitas explicaciones técnicas.
+
+Asume que el desarrollador es estudiante de Tecnología en Desarrollo de Software y necesita guía detallada para comprender cada decisión técnica.
