@@ -80,12 +80,8 @@ function configurarSistema() {
     sheetConf.appendRow(['Parametro', 'Valor']);
     sheetConf.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#b71c1c').setFontColor('#ffffff');
     sheetConf.setFrozenRows(1);
-    sheetConf.appendRow(['HoraEntrada', '08:00']);
-    sheetConf.appendRow(['HoraSalida', '17:00']);
-    sheetConf.appendRow(['HoraAlmuerzoInicio', '12:00']);
-    sheetConf.appendRow(['HoraAlmuerzoFin', '13:00']);
     sheetConf.appendRow(['HorasJornada', '8']);
-    sheetConf.appendRow(['ToleranciaMinutos', '15']);
+    sheetConf.appendRow(['TiempoAlmuerzoMinutos', '30']);
     sheetConf.appendRow(['NombreEmpresa', 'Texas Beef House of Grill']);
   }
 
@@ -358,18 +354,25 @@ function registrarAsistencia(datos) {
           return { success: false, message: 'Ya registraste tu entrada hoy.' };
         }
         var id = generarId();
-        var tardanza = calcularTardanza(ahora, config.HoraEntrada, config.ToleranciaMinutos);
-        var obs = tardanza > 0 ? 'Tardanza: ' + tardanza + ' minutos' : 'Puntual';
+        var horasJornada = parseFloat(config.HorasJornada) || 8;
+        var tiempoAlmuerzo = parseInt(config.TiempoAlmuerzoMinutos) || 30;
+        var horaSalidaEstimada = new Date(ahora.getTime() + (horasJornada * 60 + tiempoAlmuerzo) * 60 * 1000);
+        var obs = 'Entrada: ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm') +
+          ' | Salida estimada: ' + Utilities.formatDate(horaSalidaEstimada, 'America/Bogota', 'HH:mm');
 
         sheet.appendRow([
           id, datos.empleadoId, datos.nombreEmpleado,
           ahora, ahora, fotoUrl,
           datos.lat || '', datos.lng || '',
           '', '', '', '', '', '',
-          '', '', tardanza, obs
+          '', '', 0, obs
         ]);
         registrarAuditoria(datos.nombreEmpleado, 'Registro entrada', 'Entrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss'));
-        return { success: true, message: 'Entrada registrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') };
+        return {
+          success: true,
+          message: 'Entrada registrada a las ' + Utilities.formatDate(ahora, 'America/Bogota', 'HH:mm:ss') +
+            '. Salida estimada: ' + Utilities.formatDate(horaSalidaEstimada, 'America/Bogota', 'HH:mm')
+        };
 
       case 'salida_almuerzo':
         if (filaExistente < 0) {

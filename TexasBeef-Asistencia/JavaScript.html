@@ -11,6 +11,21 @@ document.addEventListener('DOMContentLoaded', function() {
   inicializarPIN();
   actualizarReloj();
   clockInterval = setInterval(actualizarReloj, 1000);
+
+  // Restaurar sesión si existe
+  var sesionGuardada = sessionStorage.getItem('texasbeef_user');
+  if (sesionGuardada) {
+    try {
+      currentUser = JSON.parse(sesionGuardada);
+      if (currentUser.rol === 'Administrador') {
+        mostrarVistaAdmin();
+      } else {
+        mostrarVistaEmpleado();
+      }
+    } catch (e) {
+      sessionStorage.removeItem('texasbeef_user');
+    }
+  }
 });
 
 // =================== RELOJ ===================
@@ -84,6 +99,7 @@ function intentarLogin() {
       document.getElementById('btnLogin').disabled = false;
       if (result.success) {
         currentUser = result.empleado;
+        sessionStorage.setItem('texasbeef_user', JSON.stringify(currentUser));
         if (currentUser.rol === 'Administrador') {
           mostrarVistaAdmin();
         } else {
@@ -106,6 +122,7 @@ function intentarLogin() {
 function cerrarSesion() {
   currentUser = null;
   capturedPhoto = null;
+  sessionStorage.removeItem('texasbeef_user');
   detenerCamara();
   document.getElementById('loginView').classList.remove('hidden');
   document.getElementById('empleadoView').classList.add('hidden');
@@ -129,6 +146,13 @@ function mostrarVistaEmpleado() {
 // =================== CÁMARA ===================
 function iniciarCamara() {
   var video = document.getElementById('cameraVideo');
+  var container = document.getElementById('cameraContainer');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    mostrarFallbackCamara(container);
+    return;
+  }
+
   var constraints = {
     video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
   };
@@ -140,16 +164,46 @@ function iniciarCamara() {
       video.style.display = 'block';
       document.getElementById('cameraCanvas').style.display = 'none';
       document.getElementById('photoPreview').classList.add('hidden');
-      document.getElementById('cameraContainer').style.display = 'block';
+      container.style.display = 'block';
     })
     .catch(function(err) {
       console.error('Error cámara:', err);
-      document.getElementById('cameraContainer').innerHTML =
-        '<div style="padding:30px; text-align:center; color:#999;">' +
-        '<p style="font-size:2rem;">📷</p>' +
-        '<p>No se pudo acceder a la cámara.</p>' +
-        '<p style="font-size:0.8rem;">Verifica los permisos del navegador.</p></div>';
+      mostrarFallbackCamara(container);
     });
+}
+
+function mostrarFallbackCamara(container) {
+  container.style.display = 'block';
+  container.innerHTML =
+    '<div style="padding:20px; text-align:center;">' +
+    '<p style="color:#999; margin-bottom:15px;">No se pudo acceder a la cámara en vivo.<br>' +
+    '<span style="font-size:0.8rem;">Si estás dentro del iframe de Apps Script, ábrelo en una pestaña nueva.</span></p>' +
+    '<label class="btn btn-primary" style="cursor:pointer;">' +
+    '📷 Tomar / Seleccionar Foto' +
+    '<input type="file" accept="image/*" capture="user" id="fotoFallbackInput" ' +
+    'style="display:none;" onchange="procesarFotoFallback(this)">' +
+    '</label>' +
+    '<div id="fallbackPreview" style="margin-top:15px;"></div>' +
+    '</div>';
+}
+
+function procesarFotoFallback(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      capturedPhoto = e.target.result;
+      document.getElementById('fallbackPreview').innerHTML =
+        '<img src="' + capturedPhoto + '" style="max-width:100%; border-radius:8px; margin-top:10px;">' +
+        '<button class="btn btn-secondary btn-small mt-10" onclick="reiniciarCamaraFallback()">Tomar otra</button>';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function reiniciarCamaraFallback() {
+  capturedPhoto = null;
+  document.getElementById('fallbackPreview').innerHTML = '';
+  document.getElementById('fotoFallbackInput').value = '';
 }
 
 function capturarFoto() {
@@ -382,6 +436,7 @@ function cambiarTab(tabName) {
   // Cargar datos según tab
   if (tabName === 'dashboard') cargarDashboard();
   if (tabName === 'empleados') cargarEmpleados();
+  if (tabName === 'asistencia') buscarAsistencia();
   if (tabName === 'config') cargarConfiguracion();
 }
 
@@ -637,24 +692,16 @@ function renderizarAsistencia(registros) {
 function cargarConfiguracion() {
   google.script.run
     .withSuccessHandler(function(config) {
-      if (config.HoraEntrada) document.getElementById('cfgEntrada').value = config.HoraEntrada;
-      if (config.HoraSalida) document.getElementById('cfgSalida').value = config.HoraSalida;
-      if (config.HoraAlmuerzoInicio) document.getElementById('cfgAlmuerzoInicio').value = config.HoraAlmuerzoInicio;
-      if (config.HoraAlmuerzoFin) document.getElementById('cfgAlmuerzoFin').value = config.HoraAlmuerzoFin;
       if (config.HorasJornada) document.getElementById('cfgHorasJornada').value = config.HorasJornada;
-      if (config.ToleranciaMinutos) document.getElementById('cfgTolerancia').value = config.ToleranciaMinutos;
+      if (config.TiempoAlmuerzoMinutos) document.getElementById('cfgTiempoAlmuerzo').value = config.TiempoAlmuerzoMinutos;
     })
     .getConfiguracion();
 }
 
 function guardarConfiguracion() {
   var configData = {
-    HoraEntrada: document.getElementById('cfgEntrada').value,
-    HoraSalida: document.getElementById('cfgSalida').value,
-    HoraAlmuerzoInicio: document.getElementById('cfgAlmuerzoInicio').value,
-    HoraAlmuerzoFin: document.getElementById('cfgAlmuerzoFin').value,
     HorasJornada: document.getElementById('cfgHorasJornada').value,
-    ToleranciaMinutos: document.getElementById('cfgTolerancia').value
+    TiempoAlmuerzoMinutos: document.getElementById('cfgTiempoAlmuerzo').value
   };
 
   google.script.run

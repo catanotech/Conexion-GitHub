@@ -74,15 +74,13 @@ Sistema web empresarial para el control de asistencia de empleados del restauran
 | R | Observaciones |
 
 ### Hoja: `Configuracion`
-| Parámetro | Valor por defecto |
-|-----------|-------------------|
-| HoraEntrada | 08:00 |
-| HoraSalida | 17:00 |
-| HoraAlmuerzoInicio | 12:00 |
-| HoraAlmuerzoFin | 13:00 |
-| HorasJornada | 8 |
-| ToleranciaMinutos | 15 |
-| NombreEmpresa | Texas Beef House of Grill |
+| Parámetro | Valor por defecto | Descripción |
+|-----------|-------------------|-------------|
+| HorasJornada | 8 | Horas de trabajo por día |
+| TiempoAlmuerzoMinutos | 30 | Duración del almuerzo en minutos |
+| NombreEmpresa | Texas Beef House of Grill | Nombre de la empresa |
+
+> **Nota:** No se maneja hora de entrada fija. Cada empleado registra su entrada a la hora que llegue y el sistema calcula automáticamente su hora estimada de salida basándose en las horas de jornada + tiempo de almuerzo.
 
 ### Hoja: `Auditoria`
 | Columna | Campo |
